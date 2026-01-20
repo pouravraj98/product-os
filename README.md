@@ -25,6 +25,7 @@ AI-powered feature prioritization system that helps product teams make data-driv
 
 - **Linear Integration**: Sync issues and projects from Linear
 - **AI-Powered Scoring**: Use GPT-4 and/or Claude to analyze and score features
+- **Master Source Integration**: AI scoring uses comprehensive product documentation for context-aware decisions
 - **Multiple Frameworks**: Support for Weighted, RICE, ICE, Value-Effort, and MoSCoW
 - **Customizable Weights**: Configure scoring factors for your team's priorities
 - **Priority Sync**: Push calculated priorities back to Linear
@@ -96,11 +97,19 @@ ANTHROPIC_API_KEY=sk-ant-xxxxx
 │                          SCORING PIPELINE                                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│   Feature Request                                                            │
-│        │                                                                     │
-│        ▼                                                                     │
+│   Feature Request          Master Source                                     │
+│        │                   (Documentation)                                   │
+│        │                        │                                            │
+│        │    ┌───────────────────┘                                            │
+│        │    │  • Core Features (22)                                          │
+│        │    │  • Extensions (26)                                             │
+│        │    │  • AI Features (11)                                            │
+│        │    │  • Platform Limits                                             │
+│        │    │  • Known Limitations                                           │
+│        │    │  • Compliance Certs                                            │
+│        ▼    ▼                                                                │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                        AI Analysis                                   │   │
+│   │                    AI Analysis (Context-Aware)                       │   │
 │   │  ┌───────────┐                           ┌───────────┐              │   │
 │   │  │  GPT-4    │─────┐           ┌─────────│  Claude   │              │   │
 │   │  │  Scoring  │     │           │         │  Scoring  │              │   │
@@ -162,6 +171,58 @@ ANTHROPIC_API_KEY=sk-ant-xxxxx
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
+## Master Source Integration
+
+The AI scoring system integrates with CometChat's documentation to provide context-aware feature prioritization. When scoring features, the AI receives comprehensive knowledge about:
+
+### What the AI Knows
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       MASTER SOURCE CONTEXT                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐            │
+│   │  Core Features  │  │   Extensions    │  │   AI Features   │            │
+│   │     (22)        │  │     (26)        │  │     (11)        │            │
+│   ├─────────────────┤  ├─────────────────┤  ├─────────────────┤            │
+│   │ • Messaging     │  │ • Engagement    │  │ • Agent Builder │            │
+│   │ • Group Chat    │  │ • Moderation    │  │ • Smart Replies │            │
+│   │ • Media Share   │  │ • Collaboration │  │ • Summaries     │            │
+│   │ • Presence      │  │ • Notifications │  │ • BYOA Support  │            │
+│   │ • Calling       │  │ • Translation   │  │ • MCP Support   │            │
+│   └─────────────────┘  └─────────────────┘  └─────────────────┘            │
+│                                                                              │
+│   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐            │
+│   │ Platform Limits │  │   Compliance    │  │   Limitations   │            │
+│   ├─────────────────┤  ├─────────────────┤  ├─────────────────┤            │
+│   │ • 300 group max │  │ • ISO 27001     │  │ • No offline    │            │
+│   │ • 50 video call │  │ • SOC 2 Type II │  │ • No auth mgmt  │            │
+│   │ • 100MB upload  │  │ • GDPR/HIPAA    │  │ • No CRM native │            │
+│   │ • 65KB message  │  │ • E2E Encrypt   │  │ • SSO enterprise│            │
+│   └─────────────────┘  └─────────────────┘  └─────────────────┘            │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### How It Helps Scoring
+
+| Context Type | Scoring Impact |
+|-------------|----------------|
+| **Core Features** | AI understands what CometChat already provides - avoids scoring existing capabilities high |
+| **Extensions** | Knows what's available as add-ons vs needs new development |
+| **Platform Limits** | Can assess technical feasibility and effort realistically |
+| **Known Limitations** | Prioritizes features that address documented gaps |
+| **Compliance** | Enterprise-readiness scoring is context-aware |
+| **Competitor Data** | Competitive parity scoring uses actual market intelligence |
+
+### Configuration
+
+The master source data is loaded from:
+- **Documentation**: `/Users/admin/cometchat/docs/`
+- **Refresh**: Data is cached for 5 minutes, refresh via `POST /api/master-source`
+- **API**: `GET /api/master-source` returns current data summary
+
 ## Project Structure
 
 ```
@@ -175,6 +236,7 @@ product-os/
 │   │   │   ├── api-keys/             # API key management
 │   │   │   ├── features/             # Feature CRUD
 │   │   │   ├── linear/               # Linear push
+│   │   │   ├── master-source/        # Master source data API
 │   │   │   ├── projects/             # Project management
 │   │   │   ├── scores/               # Score overrides
 │   │   │   ├── settings/             # App settings
@@ -211,9 +273,12 @@ product-os/
 │   │   │       ├── moscow.ts
 │   │   │       └── value-effort.ts
 │   │   ├── ai/                       # AI integration
-│   │   │   ├── analyzer.ts
+│   │   │   ├── analyzer.ts           # Feature analysis orchestration
+│   │   │   ├── model-compare.ts      # GPT-4/Claude comparison
+│   │   │   ├── prompt-builder.ts     # Dynamic prompt generation
 │   │   │   ├── openai-client.ts
 │   │   │   └── anthropic-client.ts
+│   │   ├── master-data-loader.ts     # Master source data loader
 │   │   ├── linear-client.ts          # Linear API client
 │   │   ├── types.ts                  # TypeScript definitions
 │   │   └── ...
@@ -284,6 +349,8 @@ Categorical prioritization:
 | `/api/ai/score` | POST | Score single feature |
 | `/api/ai/score-all` | POST | Start batch scoring job |
 | `/api/ai/score-all?jobId=x` | GET | Poll job status |
+| `/api/master-source` | GET | Get master source data summary |
+| `/api/master-source` | POST | Refresh master source cache |
 | `/api/settings` | GET | Get settings |
 | `/api/settings` | POST | Update settings |
 | `/api/linear` | POST | Push priorities to Linear |

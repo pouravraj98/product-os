@@ -20,7 +20,8 @@ export async function analyzeFeature(
   featurebasePosts: FeaturebasePost[],
   zendeskTickets: ZendeskTicket[],
   settings: Settings,
-  customPromptConfig?: AIPromptConfig
+  customPromptConfig?: AIPromptConfig,
+  masterSourceContext?: string
 ): Promise<AnalysisResult> {
   // Get related data for context
   const relatedPosts = getRelatedFeaturebasePosts(
@@ -54,7 +55,8 @@ export async function analyzeFeature(
       relatedTickets,
       settings.activeFramework,
       promptConfig,
-      settings.aiModel.temperature
+      settings.aiModel.temperature,
+      masterSourceContext
     );
 
     if (result) {
@@ -70,7 +72,8 @@ export async function analyzeFeature(
       relatedTickets,
       settings.activeFramework,
       promptConfig,
-      settings.aiModel.temperature
+      settings.aiModel.temperature,
+      masterSourceContext
     );
 
     aiResults = {
@@ -118,7 +121,8 @@ export async function analyzeFeatures(
   featurebasePosts: FeaturebasePost[],
   zendeskTickets: ZendeskTicket[],
   settings: Settings,
-  onProgress?: (completed: number, total: number) => void
+  onProgress?: (completed: number, total: number) => void,
+  masterSourceContext?: string
 ): Promise<AnalysisResult[]> {
   const results: AnalysisResult[] = [];
 
@@ -128,7 +132,9 @@ export async function analyzeFeatures(
       features[i],
       featurebasePosts,
       zendeskTickets,
-      settings
+      settings,
+      undefined,
+      masterSourceContext
     );
     results.push(result);
 

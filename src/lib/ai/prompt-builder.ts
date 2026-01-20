@@ -10,6 +10,9 @@ import {
 import { getProductDisplayName } from '@/config/products';
 import { defaultPromptConfig, defaultEnhancedPromptConfig } from '@/lib/config/prompt-defaults';
 
+// Master source context is now provided externally (from API/server)
+// to avoid importing fs/path in client components
+
 // Build company context from legacy configurable settings
 export function buildCompanyContext(config: AIPromptConfig): string {
   // If enhanced config exists, use it for more comprehensive context
@@ -552,7 +555,8 @@ WON'T HAVE (Score 1-2): Not this time. Explicitly out of scope.
 export function buildSystemPrompt(
   framework: ScoringFramework,
   product: Product,
-  promptConfig?: AIPromptConfig
+  promptConfig?: AIPromptConfig,
+  masterSourceContext?: string
 ): string {
   const config = promptConfig || defaultPromptConfig;
   const frameworkConfig = FRAMEWORK_CONFIGS[framework];
@@ -569,6 +573,11 @@ export function buildSystemPrompt(
     prompt += buildProductContext(product, config.enhanced);
     prompt += buildCompetitorContext(product, config.enhanced);
     prompt += buildRulesContext(config.enhanced);
+  }
+
+  // Add master source context (documentation, features, limits) if provided
+  if (masterSourceContext) {
+    prompt += `\n${masterSourceContext}\n`;
   }
 
   // Add framework-specific instructions
@@ -591,7 +600,8 @@ Product Stage: ${isMatureProduct ? 'Mature (focus on enterprise features and com
 export function buildEnhancedSystemPrompt(
   framework: ScoringFramework,
   product: Product,
-  enhancedConfig: EnhancedAIPromptConfig
+  enhancedConfig: EnhancedAIPromptConfig,
+  masterSourceContext?: string
 ): string {
   const frameworkConfig = FRAMEWORK_CONFIGS[framework];
   const productName = getProductDisplayName(product);
@@ -611,6 +621,11 @@ export function buildEnhancedSystemPrompt(
 
   // Add rules context
   prompt += buildRulesContext(enhancedConfig);
+
+  // Add master source context (documentation, features, limits) if provided
+  if (masterSourceContext) {
+    prompt += `\n${masterSourceContext}\n`;
+  }
 
   // Add framework-specific instructions
   prompt += `\n${frameworkConfig.instructions}\n`;

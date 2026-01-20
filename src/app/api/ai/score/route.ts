@@ -5,6 +5,7 @@ import { loadSettings } from '@/lib/settings-store';
 import { getAPIKeyStatus } from '@/lib/api-keys-store';
 import { analyzeFeature } from '@/lib/ai/analyzer';
 import { addUsageRecord } from '@/lib/usage-tracker';
+import { getMasterSourceData, buildMasterSourceContext } from '@/lib/master-data-loader';
 
 // Get AI configuration status
 export async function GET() {
@@ -101,12 +102,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // Load master source context (CometChat documentation, features, limits)
+    const masterSourceData = getMasterSourceData();
+    const masterSourceContext = buildMasterSourceContext(masterSourceData);
+
     // Run AI analysis (uses settings.promptConfig automatically)
     const result = await analyzeFeature(
       feature,
       featurebasePosts,
       zendeskTickets,
-      settings
+      settings,
+      undefined,
+      masterSourceContext
     );
 
     // Track usage if successful

@@ -8,6 +8,7 @@ import { addUsageRecord } from '@/lib/usage-tracker';
 import { isOpenAIConfigured } from '@/lib/ai/openai-client';
 import { isAnthropicConfigured } from '@/lib/ai/anthropic-client';
 import { FeatureRequest, FeaturebasePost, ZendeskTicket } from '@/lib/types';
+import { getMasterSourceData, buildMasterSourceContext } from '@/lib/master-data-loader';
 
 // Track ongoing scoring jobs
 const scoringJobs = new Map<string, {
@@ -211,6 +212,10 @@ async function scoreFeaturesBatch(
 
     const modelUsed = settings.aiModel.enabled;
 
+    // Load master source context (CometChat documentation, features, limits)
+    const masterSourceData = getMasterSourceData();
+    const masterSourceContext = buildMasterSourceContext(masterSourceData);
+
     for (let i = 0; i < features.length; i++) {
       // Check if cancelled
       if (job.status === 'cancelled') {
@@ -242,7 +247,8 @@ async function scoreFeaturesBatch(
             relatedTickets,
             settings.activeFramework,
             settings.promptConfig,
-            settings.aiModel.temperature
+            settings.aiModel.temperature,
+            masterSourceContext
           );
           openaiResult = comparison.openai;
           anthropicResult = comparison.anthropic;
@@ -264,7 +270,8 @@ async function scoreFeaturesBatch(
             relatedTickets,
             settings.activeFramework,
             settings.promptConfig,
-            settings.aiModel.temperature
+            settings.aiModel.temperature,
+            masterSourceContext
           );
 
           if (modelUsed === 'openai') {

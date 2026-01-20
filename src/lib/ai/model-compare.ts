@@ -28,9 +28,10 @@ export async function runModelComparison(
   relatedTickets?: ZendeskTicket[],
   framework: ScoringFramework = 'weighted',
   promptConfig?: AIPromptConfig,
-  temperature?: number
+  temperature?: number,
+  masterSourceContext?: string
 ): Promise<ModelComparisonResult> {
-  const systemPrompt = buildSystemPrompt(framework, feature.product, promptConfig);
+  const systemPrompt = buildSystemPrompt(framework, feature.product, promptConfig, masterSourceContext);
   const userPrompt = buildUserPrompt(feature, relatedPosts, relatedTickets, undefined, framework);
 
   // Check which models are configured
@@ -114,9 +115,10 @@ export async function runSingleModel(
   relatedTickets?: ZendeskTicket[],
   framework: ScoringFramework = 'weighted',
   promptConfig?: AIPromptConfig,
-  temperature?: number
+  temperature?: number,
+  masterSourceContext?: string
 ): Promise<AIModelResult | null> {
-  const systemPrompt = buildSystemPrompt(framework, feature.product, promptConfig);
+  const systemPrompt = buildSystemPrompt(framework, feature.product, promptConfig, masterSourceContext);
   const userPrompt = buildUserPrompt(feature, relatedPosts, relatedTickets, undefined, framework);
 
   if (model === 'openai') {

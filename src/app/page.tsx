@@ -15,6 +15,15 @@ interface ScoringStatus {
   needsRescoring: boolean;
 }
 
+// Extended scoring status for Header component
+interface HeaderScoringStatus {
+  totalFeatures: number;
+  scoredWithCurrentSettings: number;
+  staleScores: number;
+  unscoredFeatures: number;
+  needsRescoring: boolean;
+}
+
 interface FeaturesResponse {
   features: ScoredFeature[];
   stats: {
@@ -27,7 +36,7 @@ interface FeaturesResponse {
   settings: {
     activeFramework: ScoringFramework;
     aiModel: {
-      enabled: 'openai' | 'anthropic' | 'both';
+      enabled: 'openai' | 'anthropic' | 'gemini';
     };
     currentSettingsHash: string;
   };
@@ -44,7 +53,7 @@ export default function HomePage() {
   const [features, setFeatures] = useState<ScoredFeature[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [activeFramework, setActiveFramework] = useState<ScoringFramework>('weighted');
-  const [aiModel, setAIModel] = useState<'openai' | 'anthropic' | 'both'>('both');
+  const [aiModel, setAIModel] = useState<'openai' | 'anthropic' | 'gemini'>('gemini');
   const [lastSynced, setLastSynced] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -337,6 +346,16 @@ export default function HomePage() {
         usage={usage}
         apiKeyStatus={apiKeyStatus}
         onApiKeyError={handleApiKeyError}
+        scoringStatus={scoringStatus ? {
+          totalFeatures: stats?.totalFeatures || 0,
+          scoredWithCurrentSettings: scoringStatus.scored,
+          staleScores: scoringStatus.stale,
+          unscoredFeatures: scoringStatus.pending,
+          needsRescoring: scoringStatus.needsRescoring,
+        } : null}
+        isScoring={isScoring}
+        scoringJob={scoringJob}
+        onStartScoring={handleScoreAllFeatures}
       />
 
       <main className="container mx-auto px-4 py-8">

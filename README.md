@@ -1,6 +1,6 @@
 # Product OS
 
-AI-powered feature prioritization system that helps product teams make data-driven decisions. Integrates with Linear to sync issues, score them using AI (GPT-4/Claude), and push calculated priorities back.
+AI-powered feature prioritization system that helps product teams make data-driven decisions. Integrates with Linear to sync issues, score them using AI (GPT-4/Claude/Gemini), and push calculated priorities back.
 
 ## Overview
 
@@ -12,7 +12,7 @@ AI-powered feature prioritization system that helps product teams make data-driv
 │   ┌─────────┐     ┌──────────────┐     ┌─────────────┐     ┌─────────────┐ │
 │   │  Linear │────▶│  Sync Engine │────▶│  AI Scoring │────▶│  Dashboard  │ │
 │   │   API   │     │              │     │  (GPT-4/    │     │             │ │
-│   └─────────┘     └──────────────┘     │   Claude)   │     └─────────────┘ │
+│   └─────────┘     └──────────────┘     │Claude/Gemini│     └─────────────┘ │
 │        ▲                               └─────────────┘            │        │
 │        │                                                          │        │
 │        └──────────────────────────────────────────────────────────┘        │
@@ -24,12 +24,15 @@ AI-powered feature prioritization system that helps product teams make data-driv
 ## Features
 
 - **Linear Integration**: Sync issues and projects from Linear
-- **AI-Powered Scoring**: Use GPT-4 and/or Claude to analyze and score features
+- **AI-Powered Scoring**: Use GPT-4, Claude, or Gemini to analyze and score features
+- **Global AI Scoring**: Generate scores from Header or Settings page with progress tracking
 - **Master Source Integration**: AI scoring uses comprehensive product documentation for context-aware decisions
 - **Multiple Frameworks**: Support for Weighted, RICE, ICE, Value-Effort, and MoSCoW
 - **Customizable Weights**: Configure scoring factors for your team's priorities
 - **Priority Sync**: Push calculated priorities back to Linear
 - **First-Time Onboarding**: Guided setup wizard for new users
+- **Toast Notifications**: Auto-notification when settings change require re-scoring
+- **Improved UX for Unscored Features**: Clear "AI Score Pending" visual treatment
 
 ## Quick Start
 
@@ -37,7 +40,7 @@ AI-powered feature prioritization system that helps product teams make data-driv
 
 - Node.js 18+
 - Linear API key
-- OpenAI and/or Anthropic API key (optional, for AI scoring)
+- OpenAI, Anthropic, and/or Gemini API key (optional, for AI scoring - Gemini recommended for free tier)
 
 ### Installation
 
@@ -64,6 +67,7 @@ You can configure API keys via environment variables or through the UI:
 LINEAR_API_KEY=lin_api_xxxxx
 OPENAI_API_KEY=sk-xxxxx
 ANTHROPIC_API_KEY=sk-ant-xxxxx
+GEMINI_API_KEY=AIza-xxxxx
 ```
 
 ## Architecture
@@ -110,12 +114,14 @@ ANTHROPIC_API_KEY=sk-ant-xxxxx
 │        ▼    ▼                                                                │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
 │   │                    AI Analysis (Context-Aware)                       │   │
-│   │  ┌───────────┐                           ┌───────────┐              │   │
-│   │  │  GPT-4    │─────┐           ┌─────────│  Claude   │              │   │
-│   │  │  Scoring  │     │           │         │  Scoring  │              │   │
-│   │  └───────────┘     ▼           ▼         └───────────┘              │   │
+│   │  ┌───────────┐    ┌───────────┐    ┌───────────┐                   │   │
+│   │  │  GPT-4    │    │  Claude   │    │  Gemini   │                   │   │
+│   │  │  Scoring  │    │  Scoring  │    │  Scoring  │                   │   │
+│   │  └─────┬─────┘    └─────┬─────┘    └─────┬─────┘                   │   │
+│   │        └────────────────┼────────────────┘                          │   │
+│   │                         ▼                                           │   │
 │   │                ┌───────────────────┐                                │   │
-│   │                │  Merge Scores     │                                │   │
+│   │                │  Selected Model   │                                │   │
 │   │                │  (Configurable)   │                                │   │
 │   │                └─────────┬─────────┘                                │   │
 │   └──────────────────────────┼──────────────────────────────────────────┘   │
@@ -167,6 +173,55 @@ ANTHROPIC_API_KEY=sk-ant-xxxxx
 │                                                └────────┘                  │
 │                                                                             │
 │   [Skip Setup] available at any step                                       │
+│                                                                             │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Global AI Scoring Flow
+
+AI scoring can be triggered from multiple locations with automatic settings change detection:
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                       GLOBAL AI SCORING FLOW                                │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   Entry Points                                                              │
+│   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐                     │
+│   │   Header    │   │  Settings   │   │  Dashboard  │                     │
+│   │  AI Score   │   │  AI Scoring │   │   Banner    │                     │
+│   │   Button    │   │   Section   │   │             │                     │
+│   └──────┬──────┘   └──────┬──────┘   └──────┬──────┘                     │
+│          │                 │                 │                             │
+│          └─────────────────┼─────────────────┘                             │
+│                            ▼                                               │
+│                  ┌───────────────────┐                                     │
+│                  │  useAIScoring()   │  ◀── Shared Hook                   │
+│                  │  - startScoring   │                                     │
+│                  │  - stopScoring    │                                     │
+│                  │  - scoringStatus  │                                     │
+│                  └─────────┬─────────┘                                     │
+│                            ▼                                               │
+│                  ┌───────────────────┐                                     │
+│                  │ POST /api/ai/     │                                     │
+│                  │    score-all      │                                     │
+│                  └─────────┬─────────┘                                     │
+│                            ▼                                               │
+│                  ┌───────────────────┐                                     │
+│                  │  Background Job   │                                     │
+│                  │  - Poll every 2s  │                                     │
+│                  │  - Progress UI    │                                     │
+│                  │  - Cancel support │                                     │
+│                  └─────────┬─────────┘                                     │
+│                            ▼                                               │
+│                  ┌───────────────────┐                                     │
+│                  │   Toast Notify    │                                     │
+│                  │  - Complete       │                                     │
+│                  │  - Settings change│                                     │
+│                  └───────────────────┘                                     │
+│                                                                             │
+│   Badge shows count of features needing scoring                            │
+│   Amber highlight when settings changed (rescore needed)                   │
 │                                                                             │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -274,10 +329,11 @@ product-os/
 │   │   │       └── value-effort.ts
 │   │   ├── ai/                       # AI integration
 │   │   │   ├── analyzer.ts           # Feature analysis orchestration
-│   │   │   ├── model-compare.ts      # GPT-4/Claude comparison
+│   │   │   ├── model-compare.ts      # GPT-4/Claude/Gemini comparison
 │   │   │   ├── prompt-builder.ts     # Dynamic prompt generation
 │   │   │   ├── openai-client.ts
-│   │   │   └── anthropic-client.ts
+│   │   │   ├── anthropic-client.ts
+│   │   │   └── gemini-client.ts
 │   │   ├── master-data-loader.ts     # Master source data loader
 │   │   ├── linear-client.ts          # Linear API client
 │   │   ├── types.ts                  # TypeScript definitions
@@ -287,6 +343,8 @@ product-os/
 │   │   └── products.ts               # Product definitions
 │   │
 │   └── hooks/                        # React Hooks
+│       ├── useAIScoring.ts           # Shared AI scoring state & actions
+│       ├── useToast.ts               # Toast notification hook
 │       ├── useFeatureFilters.ts
 │       └── ...
 │
@@ -419,7 +477,7 @@ location.reload();
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **UI Components**: Shadcn/ui (Radix UI)
-- **AI**: OpenAI GPT-4, Anthropic Claude
+- **AI**: OpenAI GPT-4, Anthropic Claude, Google Gemini 2.5
 - **Integration**: Linear API
 - **Storage**: Local JSON files
 

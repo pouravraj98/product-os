@@ -8,11 +8,12 @@ export interface StoredAIScore {
   featureId: string;
   openai: AIModelResult | null;
   anthropic: AIModelResult | null;
+  gemini?: AIModelResult | null;
   scoredAt: string;
   // Track what settings were used
   settingsHash: string;
   framework: ScoringFramework;
-  modelUsed: 'openai' | 'anthropic' | 'both';
+  modelUsed: 'openai' | 'anthropic' | 'gemini';
 }
 
 // AI Scores data structure
@@ -101,7 +102,8 @@ export async function saveAIScore(
   anthropic: AIModelResult | null,
   settingsHash: string,
   framework: ScoringFramework,
-  modelUsed: 'openai' | 'anthropic' | 'both'
+  modelUsed: 'openai' | 'anthropic' | 'gemini',
+  gemini?: AIModelResult | null
 ): Promise<void> {
   const data = await loadAIScores();
 
@@ -109,6 +111,7 @@ export async function saveAIScore(
     featureId,
     openai,
     anthropic,
+    gemini: gemini || null,
     scoredAt: new Date().toISOString(),
     settingsHash,
     framework,
@@ -162,10 +165,11 @@ export async function batchSaveAIScores(
     featureId: string;
     openai: AIModelResult | null;
     anthropic: AIModelResult | null;
+    gemini?: AIModelResult | null;
   }>,
   settingsHash: string,
   framework: ScoringFramework,
-  modelUsed: 'openai' | 'anthropic' | 'both'
+  modelUsed: 'openai' | 'anthropic' | 'gemini'
 ): Promise<void> {
   const data = await loadAIScores();
 
@@ -174,6 +178,7 @@ export async function batchSaveAIScores(
       featureId: score.featureId,
       openai: score.openai,
       anthropic: score.anthropic,
+      gemini: score.gemini || null,
       scoredAt: new Date().toISOString(),
       settingsHash,
       framework,

@@ -1,6 +1,7 @@
 import { AIModelResult, AIModel, FeatureRequest, FeaturebasePost, ZendeskTicket, ScoringFramework, AIPromptConfig } from '@/lib/types';
 import { scoreWithOpenAI, isOpenAIConfigured } from './openai-client';
 import { scoreWithAnthropic, isAnthropicConfigured } from './anthropic-client';
+import { scoreWithGemini, isGeminiConfigured } from './gemini-client';
 import { buildUserPrompt, buildSystemPrompt } from './prompt-builder';
 
 interface Disagreement {
@@ -109,7 +110,7 @@ export async function runModelComparison(
 
 // Run single model
 export async function runSingleModel(
-  model: 'openai' | 'anthropic',
+  model: 'openai' | 'anthropic' | 'gemini',
   feature: FeatureRequest,
   relatedPosts?: FeaturebasePost[],
   relatedTickets?: ZendeskTicket[],
@@ -123,6 +124,8 @@ export async function runSingleModel(
 
   if (model === 'openai') {
     return scoreWithOpenAI(feature, systemPrompt, userPrompt, temperature);
+  } else if (model === 'gemini') {
+    return scoreWithGemini(feature, systemPrompt, userPrompt, temperature);
   } else {
     return scoreWithAnthropic(feature, systemPrompt, userPrompt, temperature);
   }
@@ -132,9 +135,10 @@ export async function runSingleModel(
 export async function getAvailableModels(): Promise<AIModel[]> {
   const models: AIModel[] = [];
 
-  const [openaiConfigured, anthropicConfigured] = await Promise.all([
+  const [openaiConfigured, anthropicConfigured, geminiConfigured] = await Promise.all([
     isOpenAIConfigured(),
     isAnthropicConfigured(),
+    isGeminiConfigured(),
   ]);
 
   if (openaiConfigured) {
@@ -143,8 +147,8 @@ export async function getAvailableModels(): Promise<AIModel[]> {
   if (anthropicConfigured) {
     models.push('anthropic');
   }
-  if (models.length === 2) {
-    models.push('both');
+  if (geminiConfigured) {
+    models.push('gemini');
   }
 
   return models;

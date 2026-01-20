@@ -1,6 +1,6 @@
 'use client';
 
-import { Circle, CircleDashed, CircleAlert, CircleDot } from 'lucide-react';
+import { Circle, CircleDashed, CircleAlert, CircleDot, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -53,10 +53,10 @@ const priorityConfig = {
     borderClass: 'border-priority-low-border',
   },
   unscored: {
-    Icon: CircleDashed,
-    colorClass: 'text-priority-unscored',
-    bgClass: 'bg-priority-unscored-bg',
-    borderClass: 'border-priority-unscored-border',
+    Icon: Sparkles,
+    colorClass: 'text-blue-500',
+    bgClass: 'bg-blue-50',
+    borderClass: 'border-blue-200',
   },
 };
 
@@ -104,9 +104,15 @@ export function PriorityIndicator({
     <div className={cn('flex items-center', sizeStyles.gap, className)}>
       <Icon className={cn(sizeStyles.icon, config.colorClass)} />
       {showScore && (
-        <span className={cn(sizeStyles.text, `text-priority-${level}-foreground`)}>
-          {level === 'unscored' ? '--' : score.toFixed(1)}
-        </span>
+        level === 'unscored' ? (
+          <span className={cn('text-sm font-medium text-blue-600')}>
+            Pending
+          </span>
+        ) : (
+          <span className={cn(sizeStyles.text, `text-priority-${level}-foreground`)}>
+            {score.toFixed(1)}
+          </span>
+        )
       )}
     </div>
   );

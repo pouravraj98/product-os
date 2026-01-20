@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { loadAllData } from '@/lib/data-loader';
 import { correlateData, getRelatedFeaturebasePosts, getRelatedZendeskTickets } from '@/lib/correlator';
 import { loadSettings } from '@/lib/settings-store';
-import { runModelComparison, runSingleModel } from '@/lib/ai/model-compare';
+import { runSingleModel } from '@/lib/ai/model-compare';
 import { saveAIScore, clearAllAIScores, generatePromptConfigHash, getScoringStatus, getAIScoresMap } from '@/lib/ai-score-store';
 import { addUsageRecord } from '@/lib/usage-tracker';
 import { isOpenAIConfigured } from '@/lib/ai/openai-client';
@@ -239,56 +239,35 @@ async function scoreFeaturesBatch(
 
         let openaiResult = null;
         let anthropicResult = null;
+        let geminiResult = null;
 
-        if (modelUsed === 'both') {
-          const comparison = await runModelComparison(
-            feature,
-            relatedPosts,
-            relatedTickets,
-            settings.activeFramework,
-            settings.promptConfig,
-            settings.aiModel.temperature,
-            masterSourceContext
-          );
-          openaiResult = comparison.openai;
-          anthropicResult = comparison.anthropic;
+        const result = await runSingleModel(
+          modelUsed as 'openai' | 'anthropic' | 'gemini',
+          feature,
+          relatedPosts,
+          relatedTickets,
+          settings.activeFramework,
+          settings.promptConfig,
+          settings.aiModel.temperature,
+          masterSourceContext
+        );
 
-          // Track usage
-          if (comparison.totalTokens > 0) {
-            await addUsageRecord(
-              'both',
-              comparison.totalTokens,
-              comparison.totalCost,
-              feature.id
-            );
-          }
+        if (modelUsed === 'openai') {
+          openaiResult = result;
+        } else if (modelUsed === 'gemini') {
+          geminiResult = result;
         } else {
-          const result = await runSingleModel(
-            modelUsed as 'openai' | 'anthropic',
-            feature,
-            relatedPosts,
-            relatedTickets,
-            settings.activeFramework,
-            settings.promptConfig,
-            settings.aiModel.temperature,
-            masterSourceContext
+          anthropicResult = result;
+        }
+
+        // Track usage
+        if (result && result.tokensUsed > 0) {
+          await addUsageRecord(
+            modelUsed as 'openai' | 'anthropic' | 'gemini',
+            result.tokensUsed,
+            result.cost,
+            feature.id
           );
-
-          if (modelUsed === 'openai') {
-            openaiResult = result;
-          } else {
-            anthropicResult = result;
-          }
-
-          // Track usage
-          if (result && result.tokensUsed > 0) {
-            await addUsageRecord(
-              modelUsed as 'openai' | 'anthropic',
-              result.tokensUsed,
-              result.cost,
-              feature.id
-            );
-          }
         }
 
         // Save the score
@@ -298,7 +277,8 @@ async function scoreFeaturesBatch(
           anthropicResult,
           settingsHash,
           settings.activeFramework,
-          modelUsed as 'openai' | 'anthropic' | 'both'
+          modelUsed as 'openai' | 'anthropic' | 'gemini',
+          geminiResult
         );
 
         // Small delay to avoid rate limits

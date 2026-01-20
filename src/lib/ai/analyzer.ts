@@ -8,6 +8,7 @@ export interface AnalysisResult {
   aiResults: {
     openai: AIModelResult | null;
     anthropic: AIModelResult | null;
+    gemini: AIModelResult | null;
   };
   comparison: ModelComparisonResult['comparison'];
   tokensUsed: number;
@@ -36,6 +37,7 @@ export async function analyzeFeature(
   let aiResults: AnalysisResult['aiResults'] = {
     openai: null,
     anthropic: null,
+    gemini: null,
   };
   let comparison: ModelComparisonResult['comparison'] = null;
   let tokensUsed = 0;
@@ -44,56 +46,35 @@ export async function analyzeFeature(
   // Use custom prompt config or settings prompt config
   const promptConfig = customPromptConfig || settings.promptConfig;
 
-  // Run AI analysis based on settings
-  if (settings.aiModel.enabled !== 'both') {
-    // Single model
-    const model = settings.aiModel.enabled as 'openai' | 'anthropic';
-    const result = await runSingleModel(
-      model,
-      feature,
-      relatedPosts,
-      relatedTickets,
-      settings.activeFramework,
-      promptConfig,
-      settings.aiModel.temperature,
-      masterSourceContext
-    );
+  // Run AI analysis with selected model
+  const model = settings.aiModel.enabled as 'openai' | 'anthropic' | 'gemini';
+  const result = await runSingleModel(
+    model,
+    feature,
+    relatedPosts,
+    relatedTickets,
+    settings.activeFramework,
+    promptConfig,
+    settings.aiModel.temperature,
+    masterSourceContext
+  );
 
-    if (result) {
-      aiResults[model] = result;
-      tokensUsed = result.tokensUsed;
-      cost = result.cost;
-    }
-  } else {
-    // Both models
-    const comparisonResult = await runModelComparison(
-      feature,
-      relatedPosts,
-      relatedTickets,
-      settings.activeFramework,
-      promptConfig,
-      settings.aiModel.temperature,
-      masterSourceContext
-    );
-
-    aiResults = {
-      openai: comparisonResult.openai,
-      anthropic: comparisonResult.anthropic,
-    };
-    comparison = comparisonResult.comparison;
-    tokensUsed = comparisonResult.totalTokens;
-    cost = comparisonResult.totalCost;
+  if (result) {
+    aiResults[model] = result;
+    tokensUsed = result.tokensUsed;
+    cost = result.cost;
   }
 
   // Score the feature with AI suggestions (create a temporary AI score structure)
-  const tempAIScore = aiResults.openai || aiResults.anthropic ? {
+  const tempAIScore = aiResults.openai || aiResults.anthropic || aiResults.gemini ? {
     featureId: feature.id,
     openai: aiResults.openai || null,
     anthropic: aiResults.anthropic || null,
+    gemini: aiResults.gemini || null,
     scoredAt: new Date().toISOString(),
     settingsHash: '',
     framework: settings.activeFramework,
-    modelUsed: settings.aiModel.enabled as 'openai' | 'anthropic' | 'both',
+    modelUsed: settings.aiModel.enabled as 'openai' | 'anthropic' | 'gemini',
   } : null;
 
   const scoredFeature = scoreFeature(
@@ -155,6 +136,7 @@ export async function analyzeFeatures(
 export async function getAIStatus(): Promise<{
   openai: boolean;
   anthropic: boolean;
+  gemini: boolean;
   available: AIModel[];
 }> {
   const available = await getAvailableModels();
@@ -162,6 +144,7 @@ export async function getAIStatus(): Promise<{
   return {
     openai: available.includes('openai'),
     anthropic: available.includes('anthropic'),
+    gemini: available.includes('gemini'),
     available,
   };
 }
@@ -177,10 +160,11 @@ export function estimateAnalysisCost(
 
   // GPT-4: ~$0.03/1K input, $0.06/1K output
   // Claude: ~$0.015/1K input, $0.075/1K output
-  const costPerToken = {
+  // Gemini Flash: ~$0.000075/1K input, $0.0003/1K output (essentially free)
+  const costPerToken: Record<AIModel, number> = {
     openai: 0.00004, // blended average
     anthropic: 0.00004, // blended average
-    both: 0.00008, // both models
+    gemini: 0.0000002, // essentially free
   };
 
   const estimatedCost = tokenEstimate * costPerToken[model];

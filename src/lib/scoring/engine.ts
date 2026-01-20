@@ -17,7 +17,7 @@ import { StoredAIScore } from '@/lib/ai-score-store';
 // Extract scores from AI results
 export function extractAIScores(
   aiScore: StoredAIScore | null,
-  defaultModel: 'openai' | 'anthropic' = 'anthropic'
+  defaultModel: 'openai' | 'anthropic' | 'gemini' = 'gemini'
 ): ScoreFactors {
   const scores: ScoreFactors = {};
 
@@ -25,10 +25,15 @@ export function extractAIScores(
     return scores;
   }
 
-  // Get the primary model result
-  const primary = defaultModel === 'anthropic' ? aiScore.anthropic : aiScore.openai;
-  const secondary = defaultModel === 'anthropic' ? aiScore.openai : aiScore.anthropic;
-  const result = primary || secondary;
+  // Get the primary model result based on defaultModel
+  let result: AIModelResult | null = null;
+  if (defaultModel === 'gemini') {
+    result = aiScore.gemini || aiScore.anthropic || aiScore.openai;
+  } else if (defaultModel === 'anthropic') {
+    result = aiScore.anthropic || aiScore.gemini || aiScore.openai;
+  } else {
+    result = aiScore.openai || aiScore.gemini || aiScore.anthropic;
+  }
 
   if (!result || !result.suggestions) {
     return scores;
@@ -78,10 +83,10 @@ export function scoreFeature(
   manualOverrides?: Partial<ScoreFactors>,
   customWeights?: Partial<WeightConfig>,
   customMultipliers?: Partial<TierMultipliers>,
-  defaultModel: 'openai' | 'anthropic' = 'anthropic'
+  defaultModel: 'openai' | 'anthropic' | 'gemini' = 'gemini'
 ): ScoredFeature {
   // Check if feature has been scored by AI
-  const hasAIScore = aiScore && (aiScore.openai || aiScore.anthropic);
+  const hasAIScore = aiScore && (aiScore.openai || aiScore.anthropic || aiScore.gemini);
 
   // Extract AI scores
   const aiScores = extractAIScores(aiScore, defaultModel);
@@ -150,6 +155,7 @@ export function scoreFeature(
     ? {
         openai: aiScore.openai ?? undefined,
         anthropic: aiScore.anthropic ?? undefined,
+        gemini: aiScore.gemini ?? undefined,
       }
     : undefined;
 
@@ -175,7 +181,7 @@ export function scoreAndSortFeatures(
   overridesMap: Map<string, Partial<ScoreFactors>>,
   customWeights?: Partial<WeightConfig>,
   customMultipliers?: Partial<TierMultipliers>,
-  defaultModel: 'openai' | 'anthropic' = 'anthropic'
+  defaultModel: 'openai' | 'anthropic' | 'gemini' = 'gemini'
 ): ScoredFeature[] {
   const scored = features.map(feature =>
     scoreFeature(

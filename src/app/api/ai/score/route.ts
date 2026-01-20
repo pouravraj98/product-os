@@ -15,19 +15,16 @@ export async function GET() {
 
     const aiModel = settings.aiModel.enabled;
 
-    // Determine which models are needed and their status
-    const modelsNeeded = aiModel === 'both'
-      ? ['openai', 'anthropic'] as const
-      : [aiModel] as const;
-
+    // Check if the selected model is configured
     const missingKeys: string[] = [];
-    for (const model of modelsNeeded) {
-      if (model === 'openai' && !apiKeyStatus.openai.configured) {
-        missingKeys.push('OpenAI');
-      }
-      if (model === 'anthropic' && !apiKeyStatus.anthropic.configured) {
-        missingKeys.push('Anthropic');
-      }
+    if (aiModel === 'openai' && !apiKeyStatus.openai.configured) {
+      missingKeys.push('OpenAI');
+    }
+    if (aiModel === 'anthropic' && !apiKeyStatus.anthropic.configured) {
+      missingKeys.push('Anthropic');
+    }
+    if (aiModel === 'gemini' && !apiKeyStatus.gemini.configured) {
+      missingKeys.push('Gemini');
     }
 
     return NextResponse.json({
@@ -36,6 +33,7 @@ export async function GET() {
       status: {
         openai: apiKeyStatus.openai,
         anthropic: apiKeyStatus.anthropic,
+        gemini: apiKeyStatus.gemini,
       },
       missingKeys,
       message: missingKeys.length > 0
@@ -69,13 +67,16 @@ export async function POST(request: Request) {
     const settings = await loadSettings();
     const aiModel = settings.aiModel.enabled;
 
-    // Check if required keys are configured
+    // Check if the selected model is configured
     const missingKeys: string[] = [];
-    if ((aiModel === 'openai' || aiModel === 'both') && !apiKeyStatus.openai.configured) {
+    if (aiModel === 'openai' && !apiKeyStatus.openai.configured) {
       missingKeys.push('OpenAI');
     }
-    if ((aiModel === 'anthropic' || aiModel === 'both') && !apiKeyStatus.anthropic.configured) {
+    if (aiModel === 'anthropic' && !apiKeyStatus.anthropic.configured) {
       missingKeys.push('Anthropic');
+    }
+    if (aiModel === 'gemini' && !apiKeyStatus.gemini.configured) {
+      missingKeys.push('Gemini');
     }
 
     if (missingKeys.length > 0) {
@@ -133,6 +134,14 @@ export async function POST(request: Request) {
         featureId
       );
     }
+    if (result.aiResults.gemini && !result.aiResults.gemini.error) {
+      await addUsageRecord(
+        'gemini',
+        result.aiResults.gemini.tokensUsed,
+        result.aiResults.gemini.cost,
+        featureId
+      );
+    }
 
     // Check if any model returned an error
     const errors: string[] = [];
@@ -141,6 +150,9 @@ export async function POST(request: Request) {
     }
     if (result.aiResults.anthropic?.error) {
       errors.push(`Anthropic: ${result.aiResults.anthropic.summary}`);
+    }
+    if (result.aiResults.gemini?.error) {
+      errors.push(`Gemini: ${result.aiResults.gemini.summary}`);
     }
 
     return NextResponse.json({

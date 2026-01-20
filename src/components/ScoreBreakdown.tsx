@@ -31,6 +31,7 @@ export function ScoreBreakdown({ feature, showAISuggestions = false }: ScoreBrea
   // Get AI suggestions if available
   const aiOpenai = feature.aiSuggestions?.openai;
   const aiAnthropic = feature.aiSuggestions?.anthropic;
+  const aiGemini = feature.aiSuggestions?.gemini;
 
   return (
     <Card>
@@ -52,6 +53,7 @@ export function ScoreBreakdown({ feature, showAISuggestions = false }: ScoreBrea
             const manualOverride = feature.manualOverrides?.[factor.key];
             const aiOpenaiSuggestion = aiOpenai?.suggestions.find(s => s.factor === factor.key);
             const aiAnthropicSuggestion = aiAnthropic?.suggestions.find(s => s.factor === factor.key);
+            const aiGeminiSuggestion = aiGemini?.suggestions.find(s => s.factor === factor.key);
 
             return (
               <div key={factor.key} className="space-y-1">
@@ -77,13 +79,16 @@ export function ScoreBreakdown({ feature, showAISuggestions = false }: ScoreBrea
                 </div>
 
                 {/* AI suggestions comparison */}
-                {showAISuggestions && (aiOpenaiSuggestion || aiAnthropicSuggestion) && (
+                {showAISuggestions && (aiOpenaiSuggestion || aiAnthropicSuggestion || aiGeminiSuggestion) && (
                   <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
                     {aiOpenaiSuggestion && (
                       <span>GPT-4: {aiOpenaiSuggestion.score}/10</span>
                     )}
                     {aiAnthropicSuggestion && (
                       <span>Claude: {aiAnthropicSuggestion.score}/10</span>
+                    )}
+                    {aiGeminiSuggestion && (
+                      <span>Gemini: {aiGeminiSuggestion.score}/10</span>
                     )}
                   </div>
                 )}

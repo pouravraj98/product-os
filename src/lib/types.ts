@@ -9,12 +9,13 @@ export type ScoringFramework = 'weighted' | 'rice' | 'ice' | 'value-effort' | 'm
 export type MoSCoWCategory = 'must' | 'should' | 'could' | 'wont';
 
 // AI models
-export type AIModel = 'openai' | 'anthropic' | 'both';
+export type AIModel = 'openai' | 'anthropic' | 'gemini';
 export type Confidence = 'high' | 'medium' | 'low';
 
 // Specific AI model versions
 export type OpenAIModelVersion = 'gpt-4-turbo-preview' | 'gpt-4' | 'gpt-4o' | 'gpt-4o-mini';
 export type AnthropicModelVersion = 'claude-sonnet-4-20250514' | 'claude-3-5-sonnet-20241022' | 'claude-3-opus-20240229' | 'claude-3-haiku-20240307';
+export type GeminiModelVersion = 'gemini-2.5-flash' | 'gemini-2.5-flash-lite' | 'gemini-2.5-pro';
 
 // Model display names
 export const OPENAI_MODEL_NAMES: Record<OpenAIModelVersion, string> = {
@@ -29,6 +30,12 @@ export const ANTHROPIC_MODEL_NAMES: Record<AnthropicModelVersion, string> = {
   'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
   'claude-3-opus-20240229': 'Claude 3 Opus',
   'claude-3-haiku-20240307': 'Claude 3 Haiku',
+};
+
+export const GEMINI_MODEL_NAMES: Record<GeminiModelVersion, string> = {
+  'gemini-2.5-flash': 'Gemini 2.5 Flash',
+  'gemini-2.5-flash-lite': 'Gemini 2.5 Flash Lite',
+  'gemini-2.5-pro': 'Gemini 2.5 Pro',
 };
 
 // Base feature from Linear
@@ -193,6 +200,7 @@ export interface ScoredFeature extends FeatureRequest {
   aiSuggestions?: {
     openai?: AIModelResult;
     anthropic?: AIModelResult;
+    gemini?: AIModelResult;
   };
   baseScore: number;
   multiplier: number;
@@ -250,9 +258,10 @@ export interface TierMultipliers {
 
 export interface AIModelSettings {
   enabled: AIModel;
-  defaultModel: 'openai' | 'anthropic';
+  defaultModel: 'openai' | 'anthropic' | 'gemini';
   openaiModel: OpenAIModelVersion;
   anthropicModel: AnthropicModelVersion;
+  geminiModel?: GeminiModelVersion;
   temperature: number;
 }
 
@@ -460,6 +469,7 @@ export interface UsageStats {
   byModel: {
     openai: { tokens: number; cost: number };
     anthropic: { tokens: number; cost: number };
+    gemini: { tokens: number; cost: number };
   };
 }
 

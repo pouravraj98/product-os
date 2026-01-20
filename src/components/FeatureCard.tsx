@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { PriorityIndicator } from '@/components/ui/priority-indicator';
 import { getProductDisplayName } from '@/config/products';
 import Link from 'next/link';
-import { Clock, AlertTriangle, TrendingUp, Building2, Users, Copy } from 'lucide-react';
+import { Sparkles, AlertTriangle, TrendingUp, Building2, Users, Copy } from 'lucide-react';
 
 interface FeatureCardProps {
   feature: ScoredFeature;
@@ -48,7 +48,7 @@ export function FeatureCard({ feature, rank, showProduct = true }: FeatureCardPr
 
   return (
     <Link href={`/features/${feature.id}`}>
-      <Card className={`cursor-pointer border transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-ring ${isUnscored ? 'opacity-60' : ''}`}>
+      <Card className={`cursor-pointer border transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-ring ${isUnscored ? 'border-blue-200 bg-blue-50/30' : ''}`}>
         <CardHeader className="pb-2 pt-3 px-4">
           {/* Score and Priority Row */}
           <div className="flex items-center justify-between mb-2">
@@ -156,9 +156,9 @@ export function FeatureCard({ feature, rank, showProduct = true }: FeatureCardPr
 
           {/* Unscored indicator */}
           {isUnscored && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="w-3 h-3" />
-              <span>Pending AI Score</span>
+            <div className="flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-md w-fit">
+              <Sparkles className="w-3 h-3" />
+              <span>AI Score Pending</span>
             </div>
           )}
         </CardContent>

@@ -24,11 +24,13 @@ export interface OnboardingState {
     linear: string;
     openai: string;
     anthropic: string;
+    gemini: string;
   };
   apiKeyStatus: {
     linear: { configured: boolean; source: string };
     openai: { configured: boolean; source: string };
     anthropic: { configured: boolean; source: string };
+    gemini: { configured: boolean; source: string };
   };
   syncStatus: 'idle' | 'syncing' | 'completed' | 'error';
   syncError: string | null;
@@ -80,11 +82,12 @@ const DEFAULT_WEIGHTS = {
 export function OnboardingWizard({ isOpen, onClose, onComplete }: OnboardingWizardProps) {
   const [state, setState] = useState<OnboardingState>({
     currentStep: 1,
-    apiKeys: { linear: '', openai: '', anthropic: '' },
+    apiKeys: { linear: '', openai: '', anthropic: '', gemini: '' },
     apiKeyStatus: {
       linear: { configured: false, source: 'none' },
       openai: { configured: false, source: 'none' },
       anthropic: { configured: false, source: 'none' },
+      gemini: { configured: false, source: 'none' },
     },
     syncStatus: 'idle',
     syncError: null,
@@ -181,7 +184,7 @@ export function OnboardingWizard({ isOpen, onClose, onComplete }: OnboardingWiza
     localStorage.removeItem(ONBOARDING_PROGRESS_KEY);
   };
 
-  const handleSaveApiKey = async (keyName: 'linear' | 'openai' | 'anthropic', keyValue: string) => {
+  const handleSaveApiKey = async (keyName: 'linear' | 'openai' | 'anthropic' | 'gemini', keyValue: string) => {
     try {
       const response = await fetch('/api/api-keys', {
         method: 'POST',

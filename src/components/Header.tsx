@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScoringFramework, Product } from '@/lib/types';
-import { Settings, RefreshCw, Upload, ChevronRight } from 'lucide-react';
+import { Settings, RefreshCw, Upload, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
 import SyncStatus from './SyncStatus';
 import { getProductDisplayName } from '@/config/products';
 import {
@@ -22,6 +22,21 @@ interface APIKeyStatus {
   anthropic: { configured: boolean; source: string };
 }
 
+interface ScoringStatus {
+  totalFeatures: number;
+  scoredWithCurrentSettings: number;
+  staleScores: number;
+  unscoredFeatures: number;
+  needsRescoring: boolean;
+}
+
+interface ScoringJob {
+  status: 'running' | 'completed' | 'failed' | 'cancelled';
+  progress: number;
+  total: number;
+  currentFeature: string;
+}
+
 interface HeaderProps {
   activeFramework: ScoringFramework;
   onFrameworkChange: (framework: ScoringFramework) => void;
@@ -30,10 +45,15 @@ interface HeaderProps {
   onSyncFromLinear: () => void;
   onPushToLinear: () => void;
   isPushing?: boolean;
-  aiModel?: 'openai' | 'anthropic' | 'both';
+  aiModel?: 'openai' | 'anthropic' | 'gemini';
   usage?: { tokens: number; cost: number };
   apiKeyStatus?: APIKeyStatus;
   onApiKeyError?: (message: string) => void;
+  // Scoring props
+  scoringStatus?: ScoringStatus | null;
+  isScoring?: boolean;
+  scoringJob?: ScoringJob | null;
+  onStartScoring?: (forceRescore?: boolean) => void;
 }
 
 export function Header({
@@ -44,10 +64,14 @@ export function Header({
   onSyncFromLinear,
   onPushToLinear,
   isPushing,
-  aiModel = 'both',
+  aiModel = 'gemini',
   usage,
   apiKeyStatus,
   onApiKeyError,
+  scoringStatus,
+  isScoring,
+  scoringJob,
+  onStartScoring,
 }: HeaderProps) {
   const pathname = usePathname();
 
@@ -135,6 +159,59 @@ export function Header({
 
         {/* Controls */}
         <div className="flex items-center gap-3">
+          {/* AI Score Button */}
+          {onStartScoring && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={scoringStatus?.needsRescoring ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => onStartScoring(false)}
+                    disabled={isScoring}
+                    className={cn(
+                      scoringStatus?.needsRescoring && !isScoring && 'bg-amber-600 hover:bg-amber-700'
+                    )}
+                  >
+                    {isScoring ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        {scoringJob ? `${scoringJob.progress}/${scoringJob.total}` : 'Scoring...'}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        AI Score
+                        {scoringStatus && (scoringStatus.needsRescoring || scoringStatus.unscoredFeatures > 0 || scoringStatus.staleScores > 0) && (
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              'ml-2 h-5 px-1.5 min-w-[20px] flex items-center justify-center',
+                              scoringStatus.needsRescoring ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                            )}
+                          >
+                            {scoringStatus.staleScores + scoringStatus.unscoredFeatures}
+                          </Badge>
+                        )}
+                      </>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isScoring ? (
+                    <p>Scoring {scoringJob?.currentFeature?.substring(0, 30)}...</p>
+                  ) : scoringStatus?.needsRescoring ? (
+                    <p>Settings changed - click to re-score features</p>
+                  ) : scoringStatus && (scoringStatus.unscoredFeatures > 0 || scoringStatus.staleScores > 0) ? (
+                    <p>{scoringStatus.unscoredFeatures + scoringStatus.staleScores} features need scoring</p>
+                  ) : (
+                    <p>All features are scored</p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
           {/* Sync Status */}
           <SyncStatus lastSynced={lastSynced} isSyncing={isSyncing} />
 

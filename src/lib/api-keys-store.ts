@@ -7,6 +7,7 @@ export interface APIKeysConfig {
   linearApiKey?: string;
   openaiApiKey?: string;
   anthropicApiKey?: string;
+  geminiApiKey?: string;
   lastUpdated: string;
 }
 
@@ -33,7 +34,7 @@ export async function saveAPIKeys(keys: Partial<APIKeysConfig>): Promise<APIKeys
 
 // Get effective API key (from stored config or environment variable)
 export async function getEffectiveAPIKey(
-  keyName: 'linear' | 'openai' | 'anthropic'
+  keyName: 'linear' | 'openai' | 'anthropic' | 'gemini'
 ): Promise<string | undefined> {
   const stored = await loadAPIKeys();
 
@@ -44,6 +45,8 @@ export async function getEffectiveAPIKey(
       return stored.openaiApiKey || process.env.OPENAI_API_KEY;
     case 'anthropic':
       return stored.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
+    case 'gemini':
+      return stored.geminiApiKey || process.env.GEMINI_API_KEY;
     default:
       return undefined;
   }
@@ -54,6 +57,7 @@ export async function getAPIKeyStatus(): Promise<{
   linear: { configured: boolean; source: 'stored' | 'env' | 'none' };
   openai: { configured: boolean; source: 'stored' | 'env' | 'none' };
   anthropic: { configured: boolean; source: 'stored' | 'env' | 'none' };
+  gemini: { configured: boolean; source: 'stored' | 'env' | 'none' };
 }> {
   const stored = await loadAPIKeys();
 
@@ -70,6 +74,10 @@ export async function getAPIKeyStatus(): Promise<{
       configured: !!(stored.anthropicApiKey || process.env.ANTHROPIC_API_KEY),
       source: stored.anthropicApiKey ? 'stored' : process.env.ANTHROPIC_API_KEY ? 'env' : 'none',
     },
+    gemini: {
+      configured: !!(stored.geminiApiKey || process.env.GEMINI_API_KEY),
+      source: stored.geminiApiKey ? 'stored' : process.env.GEMINI_API_KEY ? 'env' : 'none',
+    },
   };
 }
 
@@ -82,7 +90,7 @@ export function maskAPIKey(key: string | undefined): string {
 
 // Clear a specific API key
 export async function clearAPIKey(
-  keyName: 'linear' | 'openai' | 'anthropic'
+  keyName: 'linear' | 'openai' | 'anthropic' | 'gemini'
 ): Promise<APIKeysConfig> {
   const current = await loadAPIKeys();
 
@@ -95,6 +103,9 @@ export async function clearAPIKey(
       break;
     case 'anthropic':
       delete current.anthropicApiKey;
+      break;
+    case 'gemini':
+      delete current.geminiApiKey;
       break;
   }
 

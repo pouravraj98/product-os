@@ -31,7 +31,7 @@ export default function ProductPage({ params }: ProductPageProps) {
 
   const [features, setFeatures] = useState<ScoredFeature[]>([]);
   const [activeFramework, setActiveFramework] = useState<ScoringFramework>('weighted');
-  const [aiModel, setAIModel] = useState<'openai' | 'anthropic' | 'both'>('both');
+  const [aiModel, setAIModel] = useState<'openai' | 'anthropic' | 'gemini'>('gemini');
   const [lastSynced, setLastSynced] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);

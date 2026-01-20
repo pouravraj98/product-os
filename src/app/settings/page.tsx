@@ -1,14 +1,19 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAIScoring, ScoringStatus } from '@/hooks/useAIScoring';
+import { toast } from '@/hooks/useToast';
+import { ToastAction } from '@/components/ui/toast';
 import {
   Settings,
   ScoringFramework,
   UsageStats,
   OpenAIModelVersion,
   AnthropicModelVersion,
+  GeminiModelVersion,
   OPENAI_MODEL_NAMES,
   ANTHROPIC_MODEL_NAMES,
+  GEMINI_MODEL_NAMES,
   Product,
   SyncedProject,
   AIPromptConfig,
@@ -38,7 +43,7 @@ import {
 } from '@/components/ui/select';
 import { getAllFrameworks } from '@/lib/scoring/engine';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Save, RotateCcw, Key, Check, X, Eye, EyeOff, FolderKanban, Package, Plus, Trash2, ChevronDown, AlertTriangle, Settings2, Brain } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, RotateCcw, Key, Check, X, Eye, EyeOff, FolderKanban, Package, Plus, Trash2, ChevronDown, AlertTriangle, Settings2, Brain, Sparkles, RefreshCw, StopCircle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import {
   Accordion,
@@ -58,11 +63,13 @@ interface APIKeysData {
     linear: APIKeyStatus;
     openai: APIKeyStatus;
     anthropic: APIKeyStatus;
+    gemini: APIKeyStatus;
   };
   maskedKeys: {
     linear: string | null;
     openai: string | null;
     anthropic: string | null;
+    gemini: string | null;
   };
 }
 
@@ -97,10 +104,43 @@ export default function SettingsPage() {
   const [linearKey, setLinearKey] = useState('');
   const [openaiKey, setOpenaiKey] = useState('');
   const [anthropicKey, setAnthropicKey] = useState('');
+  const [geminiKey, setGeminiKey] = useState('');
   const [showLinearKey, setShowLinearKey] = useState(false);
   const [showOpenaiKey, setShowOpenaiKey] = useState(false);
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+
+  // AI Scoring hook
+  const {
+    scoringStatus,
+    isScoring,
+    scoringJob,
+    startScoring,
+    stopScoring,
+    fetchScoringStatus,
+    error: scoringError,
+    clearError: clearScoringError,
+  } = useAIScoring({
+    autoFetch: true,
+    onScoringComplete: () => {
+      toast({
+        title: 'Scoring Complete',
+        description: 'All features have been scored with AI.',
+        variant: 'success',
+      });
+    },
+    onScoringError: (error) => {
+      toast({
+        title: 'Scoring Failed',
+        description: error,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Track previous settings hash to detect changes
+  const prevSettingsHashRef = useRef<string | null>(null);
 
   const frameworks = getAllFrameworks();
 
@@ -151,7 +191,33 @@ export default function SettingsPage() {
     fetchProjects();
   }, [fetchSettings, fetchAPIKeys, fetchProjects]);
 
-  const handleSaveAPIKey = async (keyName: 'linear' | 'openai' | 'anthropic', keyValue: string) => {
+  // Watch for scoring status changes and show notification when rescoring needed
+  useEffect(() => {
+    if (scoringStatus?.currentSettingsHash) {
+      // On first load, store the hash
+      if (prevSettingsHashRef.current === null) {
+        prevSettingsHashRef.current = scoringStatus.currentSettingsHash;
+        return;
+      }
+
+      // If hash changed (settings were modified), show notification
+      if (prevSettingsHashRef.current !== scoringStatus.currentSettingsHash && scoringStatus.needsRescoring) {
+        prevSettingsHashRef.current = scoringStatus.currentSettingsHash;
+        toast({
+          title: 'Settings Changed',
+          description: 'Your changes may affect feature scores. Re-score to apply the new configuration.',
+          variant: 'warning',
+          action: (
+            <ToastAction altText="Score Now" onClick={() => startScoring(true)}>
+              Score Now
+            </ToastAction>
+          ),
+        });
+      }
+    }
+  }, [scoringStatus?.currentSettingsHash, scoringStatus?.needsRescoring, startScoring]);
+
+  const handleSaveAPIKey = async (keyName: 'linear' | 'openai' | 'anthropic' | 'gemini', keyValue: string) => {
     if (!keyValue.trim()) return;
 
     try {
@@ -168,6 +234,7 @@ export default function SettingsPage() {
       if (keyName === 'linear') setLinearKey('');
       if (keyName === 'openai') setOpenaiKey('');
       if (keyName === 'anthropic') setAnthropicKey('');
+      if (keyName === 'gemini') setGeminiKey('');
 
       await fetchAPIKeys();
     } catch (err) {
@@ -177,7 +244,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleClearAPIKey = async (keyName: 'linear' | 'openai' | 'anthropic') => {
+  const handleClearAPIKey = async (keyName: 'linear' | 'openai' | 'anthropic' | 'gemini') => {
     try {
       setSavingKey(keyName);
       const response = await fetch('/api/api-keys', {
@@ -617,6 +684,62 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
+                {/* Gemini API Key */}
+                <div className="space-y-3 p-4 border rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-base font-medium">Google Gemini API Key</Label>
+                      <p className="text-sm text-muted-foreground">Required for Gemini scoring suggestions (free tier available)</p>
+                    </div>
+                    {apiKeys && renderKeyStatus(apiKeys.status.gemini)}
+                  </div>
+                  {apiKeys?.maskedKeys.gemini && apiKeys.status.gemini.source === 'stored' && (
+                    <p className="text-sm text-muted-foreground font-mono">
+                      Current: {apiKeys.maskedKeys.gemini}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type={showGeminiKey ? 'text' : 'password'}
+                        placeholder="AIzaSyxxxxx"
+                        value={geminiKey}
+                        onChange={(e) => setGeminiKey(e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full"
+                        onClick={() => setShowGeminiKey(!showGeminiKey)}
+                      >
+                        {showGeminiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                    <Button
+                      onClick={() => handleSaveAPIKey('gemini', geminiKey)}
+                      disabled={!geminiKey.trim() || savingKey === 'gemini'}
+                    >
+                      {savingKey === 'gemini' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+                    </Button>
+                    {apiKeys?.status.gemini.source === 'stored' && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleClearAPIKey('gemini')}
+                        disabled={savingKey === 'gemini'}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Get a free API key from{' '}
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                      Google AI Studio
+                    </a>
+                  </p>
+                </div>
+
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">
                     <strong>Note:</strong> API keys can also be set via environment variables in <code className="bg-background px-1 rounded">.env.local</code>:
@@ -624,7 +747,8 @@ export default function SettingsPage() {
                   <pre className="mt-2 text-xs bg-background p-2 rounded overflow-x-auto">
 {`LINEAR_API_KEY=lin_api_xxxxx
 OPENAI_API_KEY=sk-xxxxx
-ANTHROPIC_API_KEY=sk-ant-xxxxx`}
+ANTHROPIC_API_KEY=sk-ant-xxxxx
+GEMINI_API_KEY=AIzaSyxxxxx`}
                   </pre>
                   <p className="text-sm text-muted-foreground mt-2">
                     Keys saved here take precedence over environment variables.
@@ -853,7 +977,12 @@ ANTHROPIC_API_KEY=sk-ant-xxxxx`}
                 <div className="space-y-3">
                   <Label>Model</Label>
                   <Select
-                    value={`${settings.aiModel.enabled === 'openai' ? 'openai' : 'anthropic'}:${settings.aiModel.enabled === 'openai' ? (settings.aiModel.openaiModel || 'gpt-4o') : (settings.aiModel.anthropicModel || 'claude-sonnet-4-20250514')}`}
+                    value={(() => {
+                      const enabled = settings.aiModel.enabled;
+                      if (enabled === 'openai') return `openai:${settings.aiModel.openaiModel || 'gpt-4o'}`;
+                      if (enabled === 'gemini') return `gemini:${settings.aiModel.geminiModel || 'gemini-2.5-flash'}`;
+                      return `anthropic:${settings.aiModel.anthropicModel || 'claude-sonnet-4-20250514'}`;
+                    })()}
                     onValueChange={(v) => {
                       const [provider, model] = v.split(':');
                       if (provider === 'openai') {
@@ -863,6 +992,15 @@ ANTHROPIC_API_KEY=sk-ant-xxxxx`}
                             enabled: 'openai',
                             defaultModel: 'openai',
                             openaiModel: model as OpenAIModelVersion,
+                          },
+                        });
+                      } else if (provider === 'gemini') {
+                        updateSettings({
+                          aiModel: {
+                            ...settings.aiModel,
+                            enabled: 'gemini',
+                            defaultModel: 'gemini',
+                            geminiModel: model as GeminiModelVersion,
                           },
                         });
                       } else {
@@ -881,6 +1019,26 @@ ANTHROPIC_API_KEY=sk-ant-xxxxx`}
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      {/* Gemini Models */}
+                      <SelectItem value="gemini:gemini-2.5-flash">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Gemini 2.5 Flash</span>
+                          <span className="text-xs text-green-600">Recommended</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="gemini:gemini-2.5-flash-lite">
+                        <div className="flex items-center gap-2">
+                          <span>Gemini 2.5 Flash Lite</span>
+                          <span className="text-xs text-green-600">Fastest</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="gemini:gemini-2.5-pro">
+                        <div className="flex items-center gap-2">
+                          <span>Gemini 2.5 Pro</span>
+                          <span className="text-xs text-muted-foreground">Most capable</span>
+                        </div>
+                      </SelectItem>
+                      {/* Anthropic Models */}
                       <SelectItem value="anthropic:claude-sonnet-4-20250514">
                         <div className="flex items-center gap-2">
                           <span className="font-medium">Claude 4 Sonnet</span>
@@ -899,9 +1057,10 @@ ANTHROPIC_API_KEY=sk-ant-xxxxx`}
                       <SelectItem value="anthropic:claude-3-haiku-20240307">
                         <div className="flex items-center gap-2">
                           <span>Claude 3 Haiku</span>
-                          <span className="text-xs text-muted-foreground">Fastest & cheapest</span>
+                          <span className="text-xs text-muted-foreground">Fastest</span>
                         </div>
                       </SelectItem>
+                      {/* OpenAI Models */}
                       <SelectItem value="openai:gpt-4o">
                         <span>GPT-4o</span>
                       </SelectItem>
@@ -917,7 +1076,7 @@ ANTHROPIC_API_KEY=sk-ant-xxxxx`}
                     </SelectContent>
                   </Select>
                   <p className="text-sm text-muted-foreground">
-                    Claude 4 Sonnet provides the best balance of quality and cost for feature scoring.
+                    Gemini 2.5 Flash is recommended for free usage. Claude 4 Sonnet provides the best quality.
                   </p>
                 </div>
 
@@ -926,6 +1085,8 @@ ANTHROPIC_API_KEY=sk-ant-xxxxx`}
                   <p className="text-sm text-muted-foreground">
                     {settings.aiModel.enabled === 'openai'
                       ? OPENAI_MODEL_NAMES[settings.aiModel.openaiModel || 'gpt-4o']
+                      : settings.aiModel.enabled === 'gemini'
+                      ? GEMINI_MODEL_NAMES[settings.aiModel.geminiModel || 'gemini-2.5-flash']
                       : ANTHROPIC_MODEL_NAMES[settings.aiModel.anthropicModel || 'claude-sonnet-4-20250514']
                     }
                   </p>
@@ -933,6 +1094,133 @@ ANTHROPIC_API_KEY=sk-ant-xxxxx`}
                     Make sure you have the corresponding API key configured in the API Keys tab.
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* AI Scoring Status Section */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  AI Scoring Status
+                </CardTitle>
+                <CardDescription>
+                  Generate AI-powered priority scores for your features
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Scoring Status */}
+                {scoringStatus && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{scoringStatus.totalFeatures} features</p>
+                      <p className="text-sm text-muted-foreground">
+                        {scoringStatus.scoredWithCurrentSettings} scored
+                        {scoringStatus.staleScores > 0 && ` • ${scoringStatus.staleScores} stale`}
+                        {scoringStatus.unscoredFeatures > 0 && ` • ${scoringStatus.unscoredFeatures} pending`}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      {(scoringStatus.unscoredFeatures > 0 || scoringStatus.staleScores > 0) && !isScoring && (
+                        <Button onClick={() => startScoring(false)}>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Generate Scores
+                        </Button>
+                      )}
+                      {!isScoring && scoringStatus.scoredWithCurrentSettings > 0 && (
+                        <Button variant="outline" onClick={() => startScoring(true)}>
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Re-score All
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Scoring Progress */}
+                {isScoring && scoringJob && (
+                  <div className="space-y-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800">
+                          Scoring in progress...
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={stopScoring}
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        <StopCircle className="w-4 h-4 mr-1" />
+                        Stop
+                      </Button>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-blue-700 truncate max-w-[300px]">
+                          {scoringJob.currentFeature}
+                        </span>
+                        <span className="text-blue-600">
+                          {scoringJob.progress} / {scoringJob.total}
+                        </span>
+                      </div>
+                      <div className="w-full bg-blue-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{
+                            width: `${scoringJob.total > 0 ? (scoringJob.progress / scoringJob.total) * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Needs Rescoring Warning */}
+                {scoringStatus?.needsRescoring && !isScoring && (
+                  <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-amber-800">
+                        Settings have changed
+                      </p>
+                      <p className="text-sm text-amber-700 mt-1">
+                        Some features were scored with different settings. Re-score to apply the latest configuration.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* All Scored Success */}
+                {scoringStatus && !scoringStatus.needsRescoring && scoringStatus.unscoredFeatures === 0 && scoringStatus.staleScores === 0 && !isScoring && (
+                  <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <Check className="w-5 h-5 text-green-600" />
+                    <p className="text-sm text-green-800">
+                      All features are scored with current settings
+                    </p>
+                  </div>
+                )}
+
+                {/* Scoring Error */}
+                {scoringError && (
+                  <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <X className="w-5 h-5 text-red-600 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-red-800">Scoring failed</p>
+                      <p className="text-sm text-red-700 mt-1">{scoringError}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearScoringError}
+                      className="text-red-600"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -170,12 +170,14 @@ export default function FeaturePage({ params }: FeaturePageProps) {
     }
   };
 
-  const handleAcceptAI = async (model: 'openai' | 'anthropic') => {
+  const handleAcceptAI = async (model: 'openai' | 'anthropic' | 'gemini') => {
     if (!feature) return;
 
     const aiSuggestions = model === 'openai'
       ? feature.aiSuggestions?.openai?.suggestions
-      : feature.aiSuggestions?.anthropic?.suggestions;
+      : model === 'anthropic'
+      ? feature.aiSuggestions?.anthropic?.suggestions
+      : feature.aiSuggestions?.gemini?.suggestions;
 
     if (!aiSuggestions) return;
 
@@ -184,7 +186,12 @@ export default function FeaturePage({ params }: FeaturePageProps) {
       (overrides as Record<string, number>)[suggestion.factor] = suggestion.score;
     }
 
-    await handleSaveScores(overrides, `Accepted ${model === 'openai' ? 'GPT-4' : 'Claude'} suggestions`);
+    const modelNames: Record<string, string> = {
+      openai: 'GPT-4',
+      anthropic: 'Claude',
+      gemini: 'Gemini',
+    };
+    await handleSaveScores(overrides, `Accepted ${modelNames[model]} suggestions`);
   };
 
   if (isLoading) {
@@ -475,6 +482,26 @@ export default function FeaturePage({ params }: FeaturePageProps) {
                               Total Score: {feature.aiSuggestions.anthropic.totalScore.toFixed(1)}
                             </p>
                             <p className="text-sm">{feature.aiSuggestions.anthropic.summary}</p>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {feature.aiSuggestions?.gemini && (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium">Gemini</h4>
+                          {feature.aiSuggestions.gemini.error && (
+                            <Badge variant="destructive">Error</Badge>
+                          )}
+                        </div>
+                        {feature.aiSuggestions.gemini.error ? (
+                          <p className="text-sm text-red-500">{feature.aiSuggestions.gemini.summary}</p>
+                        ) : (
+                          <>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              Total Score: {feature.aiSuggestions.gemini.totalScore.toFixed(1)}
+                            </p>
+                            <p className="text-sm">{feature.aiSuggestions.gemini.summary}</p>
                           </>
                         )}
                       </div>

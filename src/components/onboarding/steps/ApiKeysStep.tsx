@@ -17,14 +17,16 @@ interface ApiKeysStepProps {
     linear: string;
     openai: string;
     anthropic: string;
+    gemini: string;
   };
   apiKeyStatus: {
     linear: ApiKeyStatus;
     openai: ApiKeyStatus;
     anthropic: ApiKeyStatus;
+    gemini: ApiKeyStatus;
   };
-  onApiKeyChange: (keyName: 'linear' | 'openai' | 'anthropic', value: string) => void;
-  onSaveApiKey: (keyName: 'linear' | 'openai' | 'anthropic', value: string) => Promise<boolean>;
+  onApiKeyChange: (keyName: 'linear' | 'openai' | 'anthropic' | 'gemini', value: string) => void;
+  onSaveApiKey: (keyName: 'linear' | 'openai' | 'anthropic' | 'gemini', value: string) => Promise<boolean>;
   onRefreshStatus: () => void;
 }
 
@@ -38,10 +40,11 @@ export function ApiKeysStep({
     linear: false,
     openai: false,
     anthropic: false,
+    gemini: false,
   });
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
-  const handleSave = async (keyName: 'linear' | 'openai' | 'anthropic') => {
+  const handleSave = async (keyName: 'linear' | 'openai' | 'anthropic' | 'gemini') => {
     const value = apiKeys[keyName];
     if (!value.trim()) return;
 
@@ -68,11 +71,12 @@ export function ApiKeysStep({
   };
 
   const renderKeyInput = (
-    keyName: 'linear' | 'openai' | 'anthropic',
+    keyName: 'linear' | 'openai' | 'anthropic' | 'gemini',
     label: string,
     placeholder: string,
     description: string,
-    isRequired: boolean = false
+    isRequired: boolean = false,
+    helpLink?: { text: string; url: string }
   ) => {
     const status = apiKeyStatus[keyName];
     const value = apiKeys[keyName];
@@ -136,6 +140,19 @@ export function ApiKeysStep({
             Key saved successfully. You can update it in Settings later.
           </p>
         )}
+
+        {helpLink && !status.configured && (
+          <p className="text-xs text-muted-foreground">
+            <a
+              href={helpLink.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              {helpLink.text}
+            </a>
+          </p>
+        )}
       </div>
     );
   };
@@ -173,6 +190,15 @@ export function ApiKeysStep({
           'Anthropic API Key',
           'sk-ant-xxxxx',
           'Optional. Enables Claude powered feature scoring.'
+        )}
+
+        {renderKeyInput(
+          'gemini',
+          'Google Gemini API Key',
+          'AIzaSyxxxxx',
+          'Optional. Enables Gemini powered feature scoring (free tier available).',
+          false,
+          { text: 'Get a free API key from Google AI Studio →', url: 'https://aistudio.google.com/app/apikey' }
         )}
       </div>
 

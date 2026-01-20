@@ -19,6 +19,7 @@ export async function GET() {
         linear: stored.linearApiKey ? maskAPIKey(stored.linearApiKey) : null,
         openai: stored.openaiApiKey ? maskAPIKey(stored.openaiApiKey) : null,
         anthropic: stored.anthropicApiKey ? maskAPIKey(stored.anthropicApiKey) : null,
+        gemini: stored.geminiApiKey ? maskAPIKey(stored.geminiApiKey) : null,
       },
       lastUpdated: stored.lastUpdated,
     });
@@ -57,6 +58,9 @@ export async function POST(request: Request) {
         case 'anthropic':
           updates.anthropicApiKey = keyValue;
           break;
+        case 'gemini':
+          updates.geminiApiKey = keyValue;
+          break;
         default:
           return NextResponse.json(
             { error: 'Invalid keyName' },
@@ -94,12 +98,13 @@ export async function POST(request: Request) {
 
     if (action === 'saveAll') {
       // Save multiple keys at once
-      const { linear, openai, anthropic } = body;
+      const { linear, openai, anthropic, gemini } = body;
       const updates: Record<string, string> = {};
 
       if (linear) updates.linearApiKey = linear;
       if (openai) updates.openaiApiKey = openai;
       if (anthropic) updates.anthropicApiKey = anthropic;
+      if (gemini) updates.geminiApiKey = gemini;
 
       await saveAPIKeys(updates);
       const status = await getAPIKeyStatus();

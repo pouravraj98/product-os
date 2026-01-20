@@ -29,10 +29,11 @@ const defaultSettings: Settings = {
   },
   tierMultipliers: defaultTierMultipliers,
   aiModel: {
-    enabled: 'both',
-    defaultModel: 'anthropic',
+    enabled: 'gemini',
+    defaultModel: 'gemini',
     openaiModel: 'gpt-4-turbo-preview',
     anthropicModel: 'claude-sonnet-4-20250514',
+    geminiModel: 'gemini-2.5-flash',
     temperature: 0.3,
   },
   promptConfig: defaultPromptConfig,

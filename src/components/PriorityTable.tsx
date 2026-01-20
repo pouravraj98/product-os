@@ -21,7 +21,7 @@ import { PriorityIndicator, getPriorityLevel, getPriorityLabel as getPriorityLev
 import { getProductDisplayName } from '@/config/products';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowUpRight, ChevronDown, ChevronUp, Clock, AlertTriangle, TrendingUp, Building2, Copy } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, ChevronUp, Sparkles, AlertTriangle, TrendingUp, Building2, Copy } from 'lucide-react';
 import { useState } from 'react';
 
 interface PriorityTableProps {
@@ -185,7 +185,7 @@ export function PriorityTable({
               return (
                 <TableRow
                   key={feature.id}
-                  className={`cursor-pointer transition-colors hover:bg-muted/50 ${isUnscored ? 'opacity-60' : ''}`}
+                  className={`cursor-pointer transition-colors hover:bg-muted/50 ${isUnscored ? 'bg-blue-50/50' : ''}`}
                   onClick={() => router.push(`/features/${feature.id}`)}
                 >
                   {/* Score Column */}
@@ -300,9 +300,9 @@ export function PriorityTable({
 
                       {/* Unscored indicator */}
                       {isUnscored && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          <span>Pending AI Score</span>
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-md w-fit">
+                          <Sparkles className="w-3 h-3" />
+                          <span>AI Score Pending</span>
                         </div>
                       )}
                     </div>

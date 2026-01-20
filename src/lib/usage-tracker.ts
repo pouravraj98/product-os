@@ -61,6 +61,7 @@ export async function getUsageStats(): Promise<UsageStats> {
   const byModel = {
     openai: { tokens: 0, cost: 0 },
     anthropic: { tokens: 0, cost: 0 },
+    gemini: { tokens: 0, cost: 0 },
   };
 
   for (const record of records) {
@@ -73,12 +74,9 @@ export async function getUsageStats(): Promise<UsageStats> {
     } else if (record.model === 'anthropic') {
       byModel.anthropic.tokens += record.tokensUsed;
       byModel.anthropic.cost += record.cost;
-    } else if (record.model === 'both') {
-      // Split evenly for 'both' (rough approximation)
-      byModel.openai.tokens += record.tokensUsed / 2;
-      byModel.openai.cost += record.cost / 2;
-      byModel.anthropic.tokens += record.tokensUsed / 2;
-      byModel.anthropic.cost += record.cost / 2;
+    } else if (record.model === 'gemini') {
+      byModel.gemini.tokens += record.tokensUsed;
+      byModel.gemini.cost += record.cost;
     }
   }
 
@@ -111,6 +109,10 @@ export async function getUsageStats(): Promise<UsageStats> {
       anthropic: {
         tokens: Math.round(byModel.anthropic.tokens),
         cost: Math.round(byModel.anthropic.cost * 10000) / 10000,
+      },
+      gemini: {
+        tokens: Math.round(byModel.gemini.tokens),
+        cost: Math.round(byModel.gemini.cost * 10000) / 10000,
       },
     },
   };
